@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask import send_from_directory
 import random
+import os
 
 
 app = Flask(__name__)
@@ -94,10 +95,6 @@ def disease():
         "solution":"Neem Oil Spray"
 
     })
-
-
-if __name__=="__main__":
-    import os
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
