@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Smart Farmer Spray Calculator</title>
+
+    <style>
+        body{
+            font-family:Arial, sans-serif;
+            background:
+                linear-gradient(rgba(0,0,0,0.35),rgba(0,0,0,0.35)),
+                url('https://images.unsplash.com/photo-1592982537447-7440770cbfc9');
+            background-size:cover;
+            background-position:center center;
+            background-attachment:fixed;
+            text-align:center;
+            padding:40px;
+            color:white;
+        }
+
+        .container{
+            display:flex;
+            justify-content:center;
+            gap:20px;
+            flex-wrap:wrap;
+        }
+
+        .box,.sidebox{
+            background:rgba(255,255,255,0.95);
+            padding:25px;
+            border-radius:15px;
+            box-shadow:0 0 25px rgba(0,0,0,0.4);
+            color:black;
+        }
+
+        .box{width:360px;}
+        .sidebox{width:280px;text-align:left;}
+
+        input,select,button{
+            width:95%;
+            padding:10px;
+            margin:7px;
+            border-radius:6px;
+            border:1px solid #ccc;
+            font-size:14px;
+        }
+
+        button{
+            background:linear-gradient(45deg,#2e7d32,#66bb6a);
+            color:white;
+            border:none;
+            font-weight:bold;
+            cursor:pointer;
+        }
+
+        .lang-btn{width:160px;}
+
+        #seasonTips,#tankSuggest,#soilAdvice{
+            font-size:13px;
+            margin:6px;
+            color:#2e7d32;
+            font-weight:bold;
+        }
+
+        h2{color:#2e7d32;}
+
+        .aiBox{
+        margin-top:15px;
+        padding:10px;
+        border:1px solid #ccc;
+        border-radius:10px;
+        background:#f9f9f9;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1 id="title">🌾 Smart Farmer Assistant</h1>
+
+<div class="container">
+
+    <div class="box">
+
+        <button class="lang-btn" onclick="toggleLang()">🇮🇳 Marathi / English</button>
+
+        <h2 id="calcTitle">Spray Calculator</h2>
+
+        <select id="crop" onchange="setCropData()"></select>
+
+        <select id="season" onchange="showSeasonTips()">
+            <option value="">Select Season / हंगाम निवडा</option>
+            <option value="summer">Summer / उन्हाळा</option>
+            <option value="monsoon">Monsoon / पावसाळा</option>
+            <option value="winter">Winter / हिवाळा</option>
+        </select>
+
+        <div id="seasonTips"></div>
+
+        <select id="soilType" onchange="updateSoilAdvice()">
+            <option value="">Select Soil Type / माती निवडा</option>
+            <option value="black">Black Soil / काळी माती</option>
+            <option value="red">Red Soil / लाल माती</option>
+            <option value="sandy">Sandy Soil / वालुकामय</option>
+        </select>
+
+        <div id="soilAdvice"></div>
+
+        <input type="number" id="area" placeholder="Land area (acre)">
+        <input type="text" id="pesticide" placeholder="Recommended pesticide" readonly>
+        <input type="number" id="dose" placeholder="Dose per acre (gram)">
+        <input type="number" id="water" placeholder="Water per acre (litre)">
+        <input type="number" id="tank" placeholder="Tank size (litre)">
+
+        <div id="tankSuggest"></div>
+
+        <button onclick="speakCrop()" style="background:#1565c0;">🎤 Voice (Marathi)</button>
+
+        <button onclick="calculate()" id="calcBtn">Calculate</button>
+
+        <h3 id="result"></h3>
+
+        <div class="aiBox">
+
+            <h3>🌿 AI Disease Detection</h3>
+
+            <input type="file" accept="image/*" onchange="detectDisease(event)">
+
+            <div id="diseaseResult">Upload leaf photo</div>
+
+        </div>
+
+    </div>
+
+    <div class="sidebox">
+
+        <h2 id="guideTitle">🌿 Farmer Guide</h2>
+
+        <b>Next Spray Date:</b>
+
+        <div id="nextSpray">—</div>
+
+        <input type="date" id="sprayDate" onchange="setManualReminder()">
+
+        <b>Watering Schedule:</b>
+
+        <div id="waterGuide">—</div>
+
+        <br>
+
+        <b>Tip:</b>
+
+        <div id="extraTip">Select crop & season</div>
+
+        <br>
+
+        <div class="aiBox">
+
+            <h3>🌦 Weather Alert</h3>
+
+            <button onclick="getWeather()">Check Weather</button>
+
+            <div id="weatherBox">Click to load weather</div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+let lang="en";
+
+const cropData={
+ cotton:{en:"Cotton",mr:"कापूस",pest:"Imidacloprid",dose:200,water:150},
+ wheat:{en:"Wheat",mr:"गहू",pest:"Chlorpyrifos",dose:180,water:140},
+ rice:{en:"Rice",mr:"तांदूळ",pest:"Cartap Hydrochloride",dose:220,water:160},
+ onion:{en:"Onion",mr:"कांदा",pest:"Mancozeb",dose:150,water:120},
+ tomato:{en:"Tomato",mr:"टोमॅटो",pest:"Emamectin",dose:160,water:120},
+ chilli:{en:"Chilli",mr:"मिरची",pest:"Spinosad",dose:150,water:110},
+ potato:{en:"Potato",mr:"बटाटा",pest:"Metalaxyl",dose:170,water:130},
+ soybean:{en:"Soybean",mr:"सोयाबीन",pest:"Lambda-cyhalothrin",dose:170,water:130},
+ maize:{en:"Maize",mr:"मका",pest:"Spinosad",dose:180,water:140},
+ tur:{en:"Tur",mr:"तूर",pest:"Dimethoate",dose:200,water:150},
+ gram:{en:"Gram",mr:"हरभरा",pest:"Quinalphos",dose:170,water:130},
+ sugarcane:{en:"Sugarcane",mr:"ऊस",pest:"Thiamethoxam",dose:250,water:200}
+};
+
+function loadCrops(){
+let c=document.getElementById("crop");
+c.innerHTML='<option value="">'+(lang==="en"?"Select Crop":"पीक निवडा")+'</option>';
+
+for(let k in cropData){
+let name=(lang==="en")?cropData[k].en:cropData[k].mr;
+c.innerHTML+=`<option value="${k}">${name}</option>`;
+}
+}
+
+function toggleLang(){
+lang=(lang==="en")?"mr":"en";
+document.getElementById("title").innerText=
+(lang==="en")?"🌾 Smart Farmer Assistant":"🌾 स्मार्ट शेतकरी सहाय्यक";
+
+document.getElementById("calcTitle").innerText=
+(lang==="en")?"Spray Calculator":"फवारणी कॅल्क्युलेटर";
+
+document.getElementById("calcBtn").innerText=
+(lang==="en")?"Calculate":"हिशोब करा";
+
+loadCrops();
+}
+
+function setCropData(){
+let crop=document.getElementById("crop").value;
+if(!crop)return;
+
+let data=cropData[crop];
+
+document.getElementById("pesticide").value=data.pest;
+document.getElementById("dose").value=data.dose;
+document.getElementById("water").value=data.water;
+
+updateNextSpray();
+}
+
+function updateNextSpray(){
+let d=new Date();
+d.setDate(d.getDate()+7);
+document.getElementById("nextSpray").innerHTML=d.toDateString();
+}
+
+/* BACKEND DISEASE API */
+function detectDisease(){
+fetch("http://127.0.0.1:5000/disease")
+.then(res=>res.json())
+.then(data=>{
+document.getElementById("diseaseResult").innerHTML=
+"🧠 AI Result: "+data.disease+"<br>Solution: "+data.solution;
+});
+}
+
+/* BACKEND WEATHER API */
+function getWeather(){
+fetch("http://10.114.168.125:5000/disease")
+.then(res=>res.json())
+.then(data=>{
+document.getElementById("weatherBox").innerHTML=
+"🌦 "+data.weather+"<br>"+data.advice;
+});
+}
+
+/* BACKEND CALCULATE API */
+function calculate(){
+
+let area=parseFloat(document.getElementById("area").value);
+let dose=parseFloat(document.getElementById("dose").value);
+let water=parseFloat(document.getElementById("water").value);
+let tank=parseFloat(document.getElementById("tank").value);
+
+if(!area||!dose||!water||!tank){
+document.getElementById("result").innerHTML="Fill all fields";
+return;
+}
+
+fetch("http://10.114.168.125:5000/calculate",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+area:area,
+dose:dose,
+water:water,
+tank:tank
+})
+
+})
+
+.then(res=>res.json())
+
+.then(data=>{
+
+document.getElementById("result").innerHTML=
+
+"Medicine: "+data.medicine+" g<br>"+
+"Water: "+data.water+" L<br>"+
+"Tanks: "+data.tanks+"<br>"+
+"Per Tank: "+data.perTank+" g";
+
+});
+
+}
+
+loadCrops();
+
+
+</script>
+<script>
+
+if ('serviceWorker' in navigator) {
+
+navigator.serviceWorker.register('service-worker.js')
+
+.then(function() {
+
+console.log("Service Worker Registered");
+
+});
+
+}
+
+</script>
+</body>
+</html>
