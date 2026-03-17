@@ -10,7 +10,11 @@ CORS(app)
 
 @app.route("/")
 def home():
-    return send_from_directory(".", "farmer.html")
+   from flask import send_file
+
+@app.route("/")
+def home():
+    return send_file("farmer.html")
 # Crop data
 crops = {
     "cotton": {"pesticide":"Imidacloprid","dose":200,"water":150},
